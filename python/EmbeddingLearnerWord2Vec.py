@@ -51,7 +51,7 @@ if __name__ == '__main__':
     token_seqs = EncodedSequenceReader(data_paths)
     # original DeepBugs model (as in OOPSLA'18 paper)
     model = Word2Vec(token_seqs, min_count=1,
-                     window=nb_tokens_in_context/2, size=name_embedding_size, workers=40)
+                     window=nb_tokens_in_context/2, vector_size=name_embedding_size, workers=40)
 
     # optimal hyperparameters according to IdBench:
     # w2v-cbow
@@ -71,10 +71,10 @@ if __name__ == '__main__':
     with open(token_to_nb_file, "r") as file:
         token_to_nb = json.load(file)
     token_to_vector = dict()
-    for token in model.wv.vocab:
+    for token in model.wv.key_to_index:
         if token.startswith("ID:") or token.startswith("LIT:"):
-            vector = model[token].tolist()
-            token_to_vector[token] = vector
+            vector = model.wv.get_vector(token)
+            token_to_vector[token] = vector.tolist()
     token_to_vector_file_name = "token_to_vector_" + str(time_stamp) + ".json"
     with open(token_to_vector_file_name, "w") as file:
         json.dump(token_to_vector, file, sort_keys=True, indent=4)
