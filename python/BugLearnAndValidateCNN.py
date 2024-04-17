@@ -130,27 +130,27 @@ if __name__ == '__main__':
     print(learning_data.stats)
 
     # create a model (more complex CNN network)
-    model = Sequential()
-    model.add(Conv1D(32, 3, activation='relu', input_shape=(x_length, 1)))
-    model.add(MaxPooling1D(2))
-    model.add(Conv1D(64, 3, activation='relu'))
-    model.add(Dropout(0.2))
-    model.add(Flatten())  # Flatten the output of the Conv1D layer
-    model.add(Dense(200, activation="relu", kernel_initializer='normal'))
-    model.add(Dropout(0.2))
-    model.add(Dense(1, activation="sigmoid", kernel_initializer='normal'))
+    model_CNN = Sequential()
+    model_CNN.add(Conv1D(64, 3, activation='relu', input_shape=(x_length, 1)))
+    model_CNN.add(MaxPooling1D(2))
+    model_CNN.add(Conv1D(128, 3, activation='relu'))
+    model_CNN.add(Dropout(0.3))
+    model_CNN.add(Flatten())  # Flatten the output of the Conv1D layer
+    model_CNN.add(Dense(300, activation="relu", kernel_initializer='normal'))
+    model_CNN.add(Dropout(0.3))
+    model_CNN.add(Dense(1, activation="sigmoid", kernel_initializer='normal'))
 
     # train model
-    model.compile(loss='binary_crossentropy',
-                  optimizer='rmsprop', metrics=['accuracy'])
-    history = model.fit(xs_training, ys_training,
+    model_CNN.compile(loss='binary_crossentropy',
+                  optimizer='adam', metrics=['accuracy'])
+    history = model_CNN.fit(xs_training, ys_training,
                         batch_size=100, epochs=10, verbose=1)
 
     time_stamp = math.floor(time.time() * 1000)
-    model.save("bug_detection_model_CNN_"+str(time_stamp))
+    model_CNN.save("bug_detection_model_CNN_"+str(time_stamp))
 
     time_learning_done = time.time()
-    print("Time for learning (seconds): " +
+    print("Time for learning CNN model (seconds): " +
           str(round(time_learning_done - time_start)))
 
     # prepare validation data
@@ -162,9 +162,9 @@ if __name__ == '__main__':
     print(learning_data.stats)
 
     # validate the model
-    validation_loss = model.evaluate(xs_validation, ys_validation)
+    validation_loss = model_CNN.evaluate(xs_validation, ys_validation)
     print()
-    print("Validation loss & accuracy: " + str(validation_loss))
+    print("Validation loss & accuracy CNN: " + str(validation_loss))
 
     # compute precision and recall with different thresholds
     #  for reporting anomalies
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     threshold_to_incorrect = Counter()
     threshold_to_found_seeded_bugs = Counter()
     threshold_to_warnings_in_orig_code = Counter()
-    ys_prediction = model.predict(xs_validation)
+    ys_prediction = model_CNN.predict(xs_validation)
     poss_anomalies = []
     for idx in range(0, len(xs_validation), 2):
         # probab(original code should be changed), expect 0
@@ -217,7 +217,7 @@ if __name__ == '__main__':
             # Log the possible anomaly for future manual inspection
             poss_anomalies.append(Anomaly(message, anomaly_score))
 
-    f_inspect = open('poss_anomalies.txt', 'w+')
+    f_inspect = open('poss_anomalies_CNN.txt', 'w+')
     poss_anomalies = sorted(poss_anomalies, key=lambda a: -a.score)
     for anomaly in poss_anomalies:
         f_inspect.write(anomaly.message + "\n")
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     f_inspect.close()
 
     time_prediction_done = time.time()
-    print("Time for prediction (seconds): " +
+    print("Time for prediction CNN (seconds): " +
           str(round(time_prediction_done - time_learning_done)))
 
     print()

@@ -17,7 +17,7 @@ import argparse
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Conv1D, Flatten, MaxPooling1D
-from tensorflow.keras import backend as K
+
 
 import time
 import numpy as np
@@ -281,7 +281,7 @@ if __name__ == '__main__':
                 accuracy = 0.0
             print("Threshold: " + str(threshold) + "   Accuracy: " + str(round(accuracy, 4)) + "   Recall: " + str(round(recall, 4)
                                                                                                                 ) + "   Precision: " + str(round(precision, 4))+"  #Warnings: "+str(threshold_to_warnings_in_orig_code[threshold]))
-        K.clear_session()
+
 
     validate_model(model)
     validate_model(model_CNN, True)
