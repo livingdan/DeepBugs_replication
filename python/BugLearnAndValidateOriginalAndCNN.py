@@ -17,6 +17,7 @@ import argparse
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Conv1D, Flatten, MaxPooling1D
+from tensorflow.keras import backend as K
 
 import time
 import numpy as np
@@ -184,168 +185,103 @@ if __name__ == '__main__':
     print(learning_data.stats)
 
     # validate the model
-    validation_loss = model.evaluate(xs_validation, ys_validation)
-    print()
-    print("Origninal model Validation loss & accuracy: " + str(validation_loss))
+    def validate_model(model, cnn=False):
+        validation_loss = model.evaluate(xs_validation, ys_validation)
+        print()
+        if(cnn):
+            print("CNN model Validation loss & accuracy: " + str(validation_loss))
+        else:
+            print("Original model Validation loss & accuracy: " + str(validation_loss))
 
-    # compute precision and recall with different thresholds
-    #  for reporting anomalies
-    # assumption: correct and incorrect arguments are alternating
-    #  in list of x-y pairs
-    threshold_to_correct = Counter()
-    threshold_to_incorrect = Counter()
-    threshold_to_found_seeded_bugs = Counter()
-    threshold_to_warnings_in_orig_code = Counter()
-    ys_prediction = model.predict(xs_validation)
-    poss_anomalies = []
-    for idx in range(0, len(xs_validation), 2):
-        # probab(original code should be changed), expect 0
-        y_prediction_orig = ys_prediction[idx][0]
-        # probab(changed code should be changed), expect 1
-        y_prediction_changed = ys_prediction[idx + 1][0]
-        # higher means more likely to be anomaly in current code
-        anomaly_score = learning_data.anomaly_score(
-            y_prediction_orig, y_prediction_changed)
-        # higher means more likely to be correct in current code
-        normal_score = learning_data.normal_score(
-            y_prediction_orig, y_prediction_changed)
-        is_anomaly = False
+        # compute precision and recall with different thresholds
+        #  for reporting anomalies
+        # assumption: correct and incorrect arguments are alternating
+        #  in list of x-y pairs
+        threshold_to_correct = Counter()
+        threshold_to_incorrect = Counter()
+        threshold_to_found_seeded_bugs = Counter()
+        threshold_to_warnings_in_orig_code = Counter()
+        ys_prediction = model.predict(xs_validation)
+        poss_anomalies = []
+        for idx in range(0, len(xs_validation), 2):
+            # probab(original code should be changed), expect 0
+            y_prediction_orig = ys_prediction[idx][0]
+            # probab(changed code should be changed), expect 1
+            y_prediction_changed = ys_prediction[idx + 1][0]
+            # higher means more likely to be anomaly in current code
+            anomaly_score = learning_data.anomaly_score(
+                y_prediction_orig, y_prediction_changed)
+            # higher means more likely to be correct in current code
+            normal_score = learning_data.normal_score(
+                y_prediction_orig, y_prediction_changed)
+            is_anomaly = False
+            for threshold_raw in range(1, 20, 1):
+                threshold = threshold_raw / 20.0
+                suggests_change_of_orig = anomaly_score >= threshold
+                suggests_change_of_changed = normal_score >= threshold
+                # counts for positive example
+                if suggests_change_of_orig:
+                    threshold_to_incorrect[threshold] += 1
+                    threshold_to_warnings_in_orig_code[threshold] += 1
+                else:
+                    threshold_to_correct[threshold] += 1
+                # counts for negative example
+                if suggests_change_of_changed:
+                    threshold_to_correct[threshold] += 1
+                    threshold_to_found_seeded_bugs[threshold] += 1
+                else:
+                    threshold_to_incorrect[threshold] += 1
+
+                # check if we found an anomaly in the original code
+                if suggests_change_of_orig:
+                    is_anomaly = True
+
+            if is_anomaly:
+                code_piece = code_pieces_validation[idx]
+                message = "Score : " + \
+                    str(anomaly_score) + " | " + code_piece.to_message()
+    #             print("Possible anomaly: "+message)
+                # Log the possible anomaly for future manual inspection
+                poss_anomalies.append(Anomaly(message, anomaly_score))
+        if(cnn):
+            f_inspect = open('poss_anomalies_CNN.txt', 'w+')
+            poss_anomalies = sorted(poss_anomalies, key=lambda a: -a.score)
+            for anomaly in poss_anomalies:
+                f_inspect.write(anomaly.message + "\n")
+            print("Possible Anomalies written to file : poss_anomalies_CNN.txt")
+            f_inspect.close()
+
+            time_prediction_done = time.time()
+            print("Time for prediction CNN (seconds): " +
+                str(round(time_prediction_done - time_learning_done)))
+        else:
+            f_inspect = open('poss_anomalies.txt', 'w+')
+            poss_anomalies = sorted(poss_anomalies, key=lambda a: -a.score)
+            for anomaly in poss_anomalies:
+                f_inspect.write(anomaly.message + "\n")
+            print("Possible Anomalies written to file : poss_anomalies.txt")
+            f_inspect.close()
+
+            time_prediction_done = time.time()
+            print("Time for prediction Original (seconds): " +
+                str(round(time_prediction_done - time_learning_done)))
+
+        print()
         for threshold_raw in range(1, 20, 1):
             threshold = threshold_raw / 20.0
-            suggests_change_of_orig = anomaly_score >= threshold
-            suggests_change_of_changed = normal_score >= threshold
-            # counts for positive example
-            if suggests_change_of_orig:
-                threshold_to_incorrect[threshold] += 1
-                threshold_to_warnings_in_orig_code[threshold] += 1
+            recall = (
+                threshold_to_found_seeded_bugs[threshold] * 1.0) / (len(xs_validation) / 2)
+            precision = 1 - \
+                ((threshold_to_warnings_in_orig_code[threshold]
+                * 1.0) / (len(xs_validation) / 2))
+            if threshold_to_correct[threshold] + threshold_to_incorrect[threshold] > 0:
+                accuracy = threshold_to_correct[threshold] * 1.0 / (
+                    threshold_to_correct[threshold] + threshold_to_incorrect[threshold])
             else:
-                threshold_to_correct[threshold] += 1
-            # counts for negative example
-            if suggests_change_of_changed:
-                threshold_to_correct[threshold] += 1
-                threshold_to_found_seeded_bugs[threshold] += 1
-            else:
-                threshold_to_incorrect[threshold] += 1
+                accuracy = 0.0
+            print("Threshold: " + str(threshold) + "   Accuracy: " + str(round(accuracy, 4)) + "   Recall: " + str(round(recall, 4)
+                                                                                                                ) + "   Precision: " + str(round(precision, 4))+"  #Warnings: "+str(threshold_to_warnings_in_orig_code[threshold]))
+        K.clear_session()
 
-            # check if we found an anomaly in the original code
-            if suggests_change_of_orig:
-                is_anomaly = True
-
-        if is_anomaly:
-            code_piece = code_pieces_validation[idx]
-            message = "Score : " + \
-                str(anomaly_score) + " | " + code_piece.to_message()
-#             print("Possible anomaly: "+message)
-            # Log the possible anomaly for future manual inspection
-            poss_anomalies.append(Anomaly(message, anomaly_score))
-
-    f_inspect = open('poss_anomalies.txt', 'w+')
-    poss_anomalies = sorted(poss_anomalies, key=lambda a: -a.score)
-    for anomaly in poss_anomalies:
-        f_inspect.write(anomaly.message + "\n")
-    print("Possible Anomalies written to file : poss_anomalies.txt")
-    f_inspect.close()
-
-    time_prediction_done = time.time()
-    print("Time for prediction Original (seconds): " +
-          str(round(time_prediction_done - time_learning_done)))
-
-    print()
-    for threshold_raw in range(1, 20, 1):
-        threshold = threshold_raw / 20.0
-        recall = (
-            threshold_to_found_seeded_bugs[threshold] * 1.0) / (len(xs_validation) / 2)
-        precision = 1 - \
-            ((threshold_to_warnings_in_orig_code[threshold]
-              * 1.0) / (len(xs_validation) / 2))
-        if threshold_to_correct[threshold] + threshold_to_incorrect[threshold] > 0:
-            accuracy = threshold_to_correct[threshold] * 1.0 / (
-                threshold_to_correct[threshold] + threshold_to_incorrect[threshold])
-        else:
-            accuracy = 0.0
-        print("Threshold: " + str(threshold) + "   Accuracy: " + str(round(accuracy, 4)) + "   Recall: " + str(round(recall, 4)
-                                                                                                               ) + "   Precision: " + str(round(precision, 4))+"  #Warnings: "+str(threshold_to_warnings_in_orig_code[threshold]))
-
-
-    # validate the CNN model
-    validation_loss = model_CNN.evaluate(xs_validation, ys_validation)
-    print()
-    print("CNN Model Validation loss & accuracy: " + str(validation_loss))
-
-    # compute precision and recall with different thresholds
-    #  for reporting anomalies
-    # assumption: correct and incorrect arguments are alternating
-    #  in list of x-y pairs
-    threshold_to_correct = Counter()
-    threshold_to_incorrect = Counter()
-    threshold_to_found_seeded_bugs = Counter()
-    threshold_to_warnings_in_orig_code = Counter()
-    ys_prediction = model_CNN.predict(xs_validation)
-    poss_anomalies = []
-    for idx in range(0, len(xs_validation), 2):
-        # probab(original code should be changed), expect 0
-        y_prediction_orig = ys_prediction[idx][0]
-        # probab(changed code should be changed), expect 1
-        y_prediction_changed = ys_prediction[idx + 1][0]
-        # higher means more likely to be anomaly in current code
-        anomaly_score = learning_data.anomaly_score(
-            y_prediction_orig, y_prediction_changed)
-        # higher means more likely to be correct in current code
-        normal_score = learning_data.normal_score(
-            y_prediction_orig, y_prediction_changed)
-        is_anomaly = False
-        for threshold_raw in range(1, 20, 1):
-            threshold = threshold_raw / 20.0
-            suggests_change_of_orig = anomaly_score >= threshold
-            suggests_change_of_changed = normal_score >= threshold
-            # counts for positive example
-            if suggests_change_of_orig:
-                threshold_to_incorrect[threshold] += 1
-                threshold_to_warnings_in_orig_code[threshold] += 1
-            else:
-                threshold_to_correct[threshold] += 1
-            # counts for negative example
-            if suggests_change_of_changed:
-                threshold_to_correct[threshold] += 1
-                threshold_to_found_seeded_bugs[threshold] += 1
-            else:
-                threshold_to_incorrect[threshold] += 1
-
-            # check if we found an anomaly in the original code
-            if suggests_change_of_orig:
-                is_anomaly = True
-
-        if is_anomaly:
-            code_piece = code_pieces_validation[idx]
-            message = "Score : " + \
-                str(anomaly_score) + " | " + code_piece.to_message()
-#             print("Possible anomaly: "+message)
-            # Log the possible anomaly for future manual inspection
-            poss_anomalies.append(Anomaly(message, anomaly_score))
-
-    f_inspect = open('poss_anomalies_CNN.txt', 'w+')
-    poss_anomalies = sorted(poss_anomalies, key=lambda a: -a.score)
-    for anomaly in poss_anomalies:
-        f_inspect.write(anomaly.message + "\n")
-    print("Possible Anomalies written to file : poss_anomalies_CNN.txt")
-    f_inspect.close()
-
-    time_prediction_done = time.time()
-    print("Time for prediction CNN (seconds): " +
-          str(round(time_prediction_done - time_learning_done)))
-
-    print()
-    for threshold_raw in range(1, 20, 1):
-        threshold = threshold_raw / 20.0
-        recall = (
-            threshold_to_found_seeded_bugs[threshold] * 1.0) / (len(xs_validation) / 2)
-        precision = 1 - \
-            ((threshold_to_warnings_in_orig_code[threshold]
-              * 1.0) / (len(xs_validation) / 2))
-        if threshold_to_correct[threshold] + threshold_to_incorrect[threshold] > 0:
-            accuracy = threshold_to_correct[threshold] * 1.0 / (
-                threshold_to_correct[threshold] + threshold_to_incorrect[threshold])
-        else:
-            accuracy = 0.0
-        print("Threshold: " + str(threshold) + "   Accuracy: " + str(round(accuracy, 4)) + "   Recall: " + str(round(recall, 4)
-                                                                                                               ) + "   Precision: " + str(round(precision, 4))+"  #Warnings: "+str(threshold_to_warnings_in_orig_code[threshold]))
+    validate_model(model)
+    validate_model(model_CNN, True)
