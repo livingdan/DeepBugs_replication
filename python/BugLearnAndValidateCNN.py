@@ -147,7 +147,7 @@ if __name__ == '__main__':
                         batch_size=100, epochs=10, verbose=1)
 
     time_stamp = math.floor(time.time() * 1000)
-    model.save("bug_detection_model_"+str(time_stamp))
+    model.save("bug_detection_model_CNN_"+str(time_stamp))
 
     time_learning_done = time.time()
     print("Time for learning (seconds): " +
