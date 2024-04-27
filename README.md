@@ -6,9 +6,9 @@ DeepBugs is a framework for learning name-based bug detectors from an existing c
 I have extended deepbugs to use CNN architecture which improves the performance of the 3 bug detectors. However this results in increased training time.
 
 Use the 3 python notebooks, one for each bug detector from the paper to compare performance of new model.
-        DeepBugs_replicated_BinOperator_CNN_Comparison.ipynb
-        DeepBugs_replicated_IncorrectBinaryOperand_CNN_Comparison.ipynb
-        DeepBugs_replicated_swapped_args_CNN_Comparison.ipynb
+       * DeepBugs_replicated_BinOperator_CNN_Comparison.ipynb
+       * DeepBugs_replicated_IncorrectBinaryOperand_CNN_Comparison.ipynb
+       * DeepBugs_replicated_swapped_args_CNN_Comparison.ipynb
 
 
 
