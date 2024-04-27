@@ -12,8 +12,8 @@ from collections import Counter, namedtuple
 import math
 import argparse
 
-from tensorflow.python.keras.models import Sequential
-from tensorflow.python.keras.layers.core import Dense, Dropout
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
 
 import time
 import numpy as np

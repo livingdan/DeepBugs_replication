@@ -9,7 +9,7 @@ import json
 from os.path import join
 from os import getcwd
 from collections import namedtuple
-from tensorflow.python.keras.models import load_model
+from keras.models import load_model
 import time
 import numpy as np
 import Util
@@ -140,6 +140,7 @@ if __name__ == '__main__':
 
     # produce prediction message
     predictions = []
+    probabilitys = []
 
     for idx in range(0, len(xs_newdata)):
         p = ys_prediction[idx][0]    # probab, expect 0, when code is correct
@@ -150,12 +151,16 @@ if __name__ == '__main__':
         # only pick codepieces with prediction > p
         if p > p_threshold:
             predictions.append(message)
+            probabilitys.append(p)
 
     if predictions == []:
         no_examples = "No data examples found in input data with prediction > " + \
             str(p_threshold)
         predictions.append(no_examples)
 
+    combined_list = list(zip(probabilitys,predictions))
+    combined_list.sort(key=lambda x: x[0], reverse=True)
+    probabilitys, predictions = zip(*combined_list)
     # log the messages to file
     f_inspect = open('predictions.txt', 'w+')
     for message in predictions:
