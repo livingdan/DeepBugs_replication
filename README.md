@@ -1,12 +1,16 @@
-DeepBugs: Deep Learning to Find Bugs
+DeepBugs Replication and Extension using CNN model architecture.
 ====================================
 
 DeepBugs is a framework for learning name-based bug detectors from an existing code corpus. See [our OOPSLA'18 paper](http://software-lab.org/publications/oopsla2018_DeepBugs.pdf) for a detailed description.
 
-Quick Start
---------------
+I have extended deepbugs to use CNN architecture which improves the performance of the 3 bug detectors. However this results in increased training time.
 
-A quick and easy way to play with a simplified version of DeepBugs is a [Jupyter notebook, which you can run on Google's Colaboratory](https://colab.research.google.com/github/michaelpradel/DeepBugs/blob/master/DeepBugs.ipynb). To use the full DeepBugs tool, read on.
+Use the 3 python notebooks, one for each bug detector from the paper to compare performance of new model.
+        DeepBugs_replicated_BinOperator_CNN_Comparison.ipynb
+        DeepBugs_replicated_IncorrectBinaryOperand_CNN_Comparison.ipynb
+        DeepBugs_replicated_swapped_args_CNN_Comparison.ipynb
+
+
 
 Overview
 -------------
