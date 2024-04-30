@@ -13,13 +13,20 @@ Use the 3 python notebooks, one for each bug detector from the paper to compare 
 To run the notebooks as is requires Google Colab Pro's High-Ram machine with T4 GPU, reducing the dataset further may allow to run on low ram machines.
 
 Follow the steps in the notebooks.
+
 0. Clone respository
+   
 1. download dataset
+
 2. Optional (embeddings) models use pre embedded file
+
 3.1 extract traning examples
-   option 1 unzip previously extracted files
-   option 2 extract own training examples
-3.1 train and evalute original model and our CNN Model to see results 
+
+ *  option 1 unzip previously extracted files
+   
+ *  option 2 extract own training examples
+
+3.2 train and evalute original model and our CNN Model to see results 
 
 
 Overview
